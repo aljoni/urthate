@@ -10,24 +10,24 @@ class SQLGenerator {
     String line = '  `${column.name}` ';
 
     if (Urthate().mappers.containsKey(column.type)) {
-      line += Urthate().mappers[column.type].columnType;
+      line += Urthate().mappers[column.type].columnType.toUpperCase();
       if (Urthate().mappers[column.type].columnSize != null) {
         line += '(${Urthate().mappers[column.type].columnSize})';
       } else if (column.size != null) {
         line += '(${column.size})';
       }
     } else {
-      line += column.type;
+      line += column.type.toUpperCase();
       if (column.size != null) {
         line += '(${column.size})';
       }
     }
 
     if (column.notNull) {
-      line += ' not null';
+      line += ' NOT NULL';
     }
     if (column.unique) {
-      line += ' unique';
+      line += ' UNIQUE';
     }
 
     return line;
@@ -101,7 +101,7 @@ class SQLGenerator {
     String sql = 'CREATE TABLE `${modelInfo.name}` (\n';
     sql += lines.join(',\n');
     if (primaries.isNotEmpty) {
-      sql += ',\n\n  primary key(' + primaries.map((name) => '`$name`').join(',') + ')\n';
+      sql += ',\n  PRIMARY KEY(' + primaries.map((name) => '`$name`').join(',') + ')\n';
     } else {
       sql += '\n';
     }
@@ -133,13 +133,34 @@ class SQLGenerator {
     }
 
     // Generate columns linking both tables.
+    List<String> columnNames = [];
     List<String> lines = []
-      ..addAll(modelInfo.primaryColumns.map(_buildColumn))
-      ..addAll(otherModelInfo.primaryColumns.map(_buildColumn));
+      ..addAll(modelInfo.primaryColumns.map((column) {
+        columnNames.add('${modelInfo.name}__${column.name}');
+        return _buildColumn(Column(
+          name: '${modelInfo.name}__${column.name}',
+          type: column.type,
+          size: column.size,
+        ));
+      }))
+      ..addAll(otherModelInfo.primaryColumns.map((column) {
+        columnNames.add('${otherModelInfo.name}__${column.name}');
+        return _buildColumn(Column(
+          name: '${otherModelInfo.name}__${column.name}',
+          type: column.type,
+          size: column.size,
+        ));
+      }));
 
     // Generate SQL string.
     String sql = 'CREATE TABLE `$tableName` (\n';
     sql += lines.join(',\n');
+    sql += ',\n  PRIMARY KEY(' + columnNames.map((name) => '`$name`').join(',') + '),\n';
+    modelInfo.primaryColumns.forEach((column) => sql +=
+        '  FOREIGN KEY(`${modelInfo.name}__${column.name}`) REFERENCES `${modelInfo.name}`(`${column.name}`),\n');
+    otherModelInfo.primaryColumns.forEach((column) => sql +=
+        '  FOREIGN KEY(`${otherModelInfo.name}__${column.name}`) REFERENCES `${otherModelInfo.name}`(`${column.name}`),\n');
+    sql = sql.substring(0, sql.length - 2);
     return sql + '\n)';
   }
 
