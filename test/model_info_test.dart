@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:urthate/src/sql_generator.dart';
 import 'package:urthate/urthate.dart' as urt;
 
 void main() {
@@ -9,7 +10,7 @@ void main() {
         urt.Column(name: 'id', type: 'text', primary: true),
         urt.Column(name: 'created', type: 'datetime', notNull: true),
         urt.Column(name: 'active', type: 'bool'),
-        urt.Column(name: 'bar', reference: urt.Reference('bar', urt.ReferenceType.oneToOne)),
+        urt.Column(name: 'bars', reference: urt.Reference('bar', urt.ReferenceType.manyToMany)),
       ],
       mapper: null,
     );
@@ -20,6 +21,7 @@ void main() {
         urt.Column(name: 'id', type: 'text', primary: true),
         urt.Column(name: 'name', type: 'text', primary: true),
         urt.Column(name: 'email', type: 'text'),
+        urt.Column(name: 'foos', reference: urt.Reference('foo', urt.ReferenceType.manyToMany)),
       ],
       mapper: null,
     );
@@ -27,7 +29,13 @@ void main() {
     urt.Urthate().register(foo);
     urt.Urthate().register(bar);
 
-    print(foo.buildCreateTable());
-    print(bar.buildCreateTable());
+    SQLGenerator sqlGenerator = SQLGenerator();
+
+    print(sqlGenerator.generateCreateTable(foo));
+    print(sqlGenerator.generateCreateTable(bar));
+    List<String> sqls = sqlGenerator.generateManyToManyTables();
+    for (String sql in sqls) {
+      print(sql);
+    }
   });
 }
