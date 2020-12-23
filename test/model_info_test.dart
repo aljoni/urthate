@@ -1,32 +1,33 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:urthate/urthate.dart' as ut;
+import 'package:urthate/urthate.dart' as urt;
 
 void main() {
   test('generate sql', () {
-    ut.ModelInfo foo = ut.ModelInfo(
+    urt.ModelInfo foo = urt.ModelInfo(
       name: 'foo',
-      columns: <ut.Column>[
-        ut.Column(name: 'id', type: 'text', primary: true),
-        ut.Column(name: 'created', type: 'datetime', notNull: true),
-        ut.Column(name: 'active', type: 'bool'),
-        ut.Column(name: 'bar', reference: ut.Reference('bar', ut.ReferenceType.oneToOne)),
+      columns: <urt.Column>[
+        urt.Column(name: 'id', type: 'text', primary: true),
+        urt.Column(name: 'created', type: 'datetime', notNull: true),
+        urt.Column(name: 'active', type: 'bool'),
+        urt.Column(name: 'bar', reference: urt.Reference('bar', urt.ReferenceType.oneToOne)),
       ],
       mapper: null,
     );
 
-    ut.ModelInfo bar = ut.ModelInfo(
+    urt.ModelInfo bar = urt.ModelInfo(
       name: 'bar',
-      columns: <ut.Column>[
-        ut.Column(name: 'id', type: 'text', primary: true),
-        ut.Column(name: 'name', type: 'text', primary: true),
-        ut.Column(name: 'email', type: 'text'),
+      columns: <urt.Column>[
+        urt.Column(name: 'id', type: 'text', primary: true),
+        urt.Column(name: 'name', type: 'text', primary: true),
+        urt.Column(name: 'email', type: 'text'),
       ],
       mapper: null,
     );
 
-    ut.Urthate().register(foo);
-    ut.Urthate().register(bar);
+    urt.Urthate().register(foo);
+    urt.Urthate().register(bar);
 
     print(foo.buildCreateTable());
+    print(bar.buildCreateTable());
   });
 }
