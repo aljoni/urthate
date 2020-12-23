@@ -23,7 +23,7 @@ class Column {
   final bool notNull;
 
   /// Name of other model which column references.
-  final Reference reference;
+  final Reference references;
 
   const Column({
     @required this.name,
@@ -32,6 +32,6 @@ class Column {
     this.primary = false,
     this.unique = false,
     this.notNull = false,
-    this.reference,
+    this.references,
   });
 }

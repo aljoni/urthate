@@ -10,7 +10,7 @@ void main() {
         urt.Column(name: 'id', type: 'text', primary: true),
         urt.Column(name: 'created', type: 'datetime', notNull: true),
         urt.Column(name: 'active', type: 'bool'),
-        urt.Column(name: 'bars', reference: urt.Reference('bar', urt.ReferenceType.manyToMany)),
+        urt.Column(name: 'bars', references: urt.Reference('bar', urt.ReferenceType.manyToMany)),
       ],
       mapper: null,
     );
@@ -21,7 +21,7 @@ void main() {
         urt.Column(name: 'id', type: 'text', primary: true),
         urt.Column(name: 'name', type: 'text', primary: true),
         urt.Column(name: 'email', type: 'text'),
-        urt.Column(name: 'foos', reference: urt.Reference('foo', urt.ReferenceType.manyToMany)),
+        urt.Column(name: 'foos', references: urt.Reference('foo', urt.ReferenceType.manyToMany)),
       ],
       mapper: null,
     );

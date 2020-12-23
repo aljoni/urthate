@@ -29,13 +29,13 @@ class ModelInfo {
 
   /// Returns a list of all columns with a reference of type [referenceType].
   List<Column> getColumnsWithReference(ReferenceType referenceType) =>
-      columns.where((column) => column.reference != null && column.reference.type == referenceType).toList();
+      columns.where((column) => column.references != null && column.references.type == referenceType).toList();
 
   /// Returns true if model has any columns with a reference of type [referenceType].
   bool hasReferenceOfType(ReferenceType referenceType) =>
-      columns.any((column) => column.reference != null && column.reference.type == referenceType);
+      columns.any((column) => column.references != null && column.references.type == referenceType);
 
   /// Returns true if model references the [modelName] specified.
   bool referencesModel(String modelName, ReferenceType referenceType) => columns.any((column) =>
-      column.reference != null && (column.reference.modelName == modelName && column.reference.type == referenceType));
+      column.references != null && (column.references.modelName == modelName && column.references.type == referenceType));
 }

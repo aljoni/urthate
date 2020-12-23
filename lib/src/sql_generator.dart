@@ -35,7 +35,7 @@ class SQLGenerator {
 
   List<String> _buildOneToOne(Column column) {
     List<String> lines = [];
-    List<Column> otherPrimaries = Urthate().models[column.reference.modelName].primaryColumns;
+    List<Column> otherPrimaries = Urthate().models[column.references.modelName].primaryColumns;
     for (Column otherColumn in otherPrimaries) {
       lines.add(_buildColumn(
         Column(
@@ -70,8 +70,8 @@ class SQLGenerator {
 
     // Add columns directly defined on model.
     for (Column column in modelInfo.columns) {
-      if (column.reference != null) {
-        switch (column.reference.type) {
+      if (column.references != null) {
+        switch (column.references.type) {
           case ReferenceType.oneToOne:
             oneToOneReferences.add(column);
             break;
@@ -110,11 +110,11 @@ class SQLGenerator {
 
   String _generateManyToManyForColumn(ModelInfo modelInfo, Column column) {
     // Get referenced model.
-    ModelInfo otherModelInfo = Urthate().models[column.reference.modelName];
+    ModelInfo otherModelInfo = Urthate().models[column.references.modelName];
 
     // Ensure other model exists.
     if (otherModelInfo == null) {
-      throw StateError('Model "${column.reference.modelName}", referenced by "${modelInfo.name}", does not exist');
+      throw StateError('Model "${column.references.modelName}", referenced by "${modelInfo.name}", does not exist');
     }
 
     // Generate table name by combining both names in alphabetical order.
@@ -129,7 +129,7 @@ class SQLGenerator {
     // Ensure other model references the model were generating for.
     if (!otherModelInfo.referencesModel(modelInfo.name, ReferenceType.manyToMany)) {
       throw StateError(
-          'Model "${column.reference.modelName}", referenced by "${modelInfo.name}", does not have a manyToMany reference to "${modelInfo.name}"');
+          'Model "${column.references.modelName}", referenced by "${modelInfo.name}", does not have a manyToMany reference to "${modelInfo.name}"');
     }
 
     // Generate columns linking both tables.
