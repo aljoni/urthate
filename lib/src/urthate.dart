@@ -34,6 +34,6 @@ class Urthate {
 
   /// Returns a list of all models which reference the [modelName] specified, by default finds models which reference
   /// using [ReferenceType.oneToMany].
-  List<ModelInfo> findModelsThatReference(String modelName, {ReferenceType referenceType = ReferenceType.oneToMany}) =>
+  List<ModelInfo> findModelsThatReferenceModel(String modelName, ReferenceType referenceType) =>
       models.values.where((model) => model.referencesModel(modelName, referenceType)).toList();
 }

@@ -94,18 +94,34 @@ class SQLGenerator {
     lines.addAll(oneToOneReferences.expand(_buildOneToOne));
 
     // Add columns for one-to-many references.
-    List<ModelInfo> referencesModel = Urthate().findModelsThatReference(modelInfo.name);
+    List<ModelInfo> referencesModel = Urthate().findModelsThatReferenceModel(modelInfo.name, ReferenceType.oneToMany);
     lines.addAll(referencesModel.expand(_buildOneToMany));
 
     // Generate SQL string.
     String sql = 'CREATE TABLE `${modelInfo.name}` (\n';
     sql += lines.join(',\n');
+
     if (primaries.isNotEmpty) {
-      sql += ',\n  PRIMARY KEY(' + primaries.map((name) => '`$name`').join(',') + ')\n';
-    } else {
-      sql += '\n';
+      sql += ',\n  PRIMARY KEY(' + primaries.map((name) => '`$name`').join(',') + '),\n';
     }
-    return sql + ')';
+
+    for (Column column in oneToOneReferences) {
+      ModelInfo otherModelInfo = Urthate().models[column.references.modelName];
+      for (Column otherColumn in otherModelInfo.primaryColumns) {
+        sql +=
+            '  FOREIGN KEY(`${column.name}__${otherColumn.name}`) REFERENCES `${otherModelInfo.name}`(`${otherColumn.name}`),\n';
+      }
+    }
+
+    for (ModelInfo otherModelInfo in referencesModel) {
+      for (Column column in modelInfo.primaryColumns) {
+        sql +=
+            '  FOREIGN KEY(`${otherModelInfo.name}__${column.name}`) REFERENCES `${otherModelInfo.name}`(`${column.name}`),\n';
+      }
+    }
+
+    sql = sql.substring(0, sql.length - 2);
+    return sql + '\n)';
   }
 
   String _generateManyToManyForColumn(ModelInfo modelInfo, Column column) {
