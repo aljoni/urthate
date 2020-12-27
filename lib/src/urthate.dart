@@ -45,11 +45,7 @@ class Urthate {
   List<ModelInfo> findModelsThatReferenceModel(String modelName, ReferenceType referenceType) =>
       models.values.where((model) => model.referencesModel(this, modelName, referenceType)).toList();
 
-  Future<sql.Database> get database async {
-    if (_db != null) {
-      return _db;
-    }
-
+  Future init() async {
     SQLGenerator generator = SQLGenerator();
     _db = await sql.openDatabase(
       path,
@@ -66,46 +62,48 @@ class Urthate {
         }
       },
     );
-    return _db;
   }
 
   /// Save [model] to database.  New models will be inserted, existing models will be updated.
   Future save(Model model, {sql.Transaction txn}) async {
+    // TODO: Handle [_db] being null.
+
     if (txn == null) {
-      return await (await database).transaction((txn) async => save(model, txn: txn));
+      return await _db.transaction((txn) async => save(model, txn: txn));
     }
 
     // -- Save this model.
+    ModelInfo modelInfo = models[model.modelName];
 
     // Load model from database.
     Map<String, dynamic> map = model.dbMap;
     List<Map<String, dynamic>> rows = await txn.query(
-      model.modelInfo.name,
-      where: SQLGenerator.generateWherePrimary(this, model.modelInfo),
-      whereArgs: model.modelInfo.primaryColumns(version).map((column) => map[column.name]).toList(),
+      modelInfo.name,
+      where: SQLGenerator.generateWherePrimary(this, modelInfo),
+      whereArgs: modelInfo.primaryColumns(version).map((column) => map[column.name]).toList(),
     );
 
     if (rows.isEmpty) {
       // Was not found in database, perform insert.
-      txn.insert(model.modelInfo.name, map);
+      txn.insert(modelInfo.name, map);
     } else {
       // Was found, perform update.
       txn.update(
-        model.modelInfo.name,
+        modelInfo.name,
         map,
-        where: SQLGenerator.generateWherePrimary(this, model.modelInfo),
-        whereArgs: model.modelInfo.primaryColumns(version).map((column) => map[column.name]).toList(),
+        where: SQLGenerator.generateWherePrimary(this, modelInfo),
+        whereArgs: modelInfo.primaryColumns(version).map((column) => map[column.name]).toList(),
       );
     }
 
     // -- Save one-to-one referenced models.
-    for (Column column in model.modelInfo.getColumnsWithReference(this, ReferenceType.oneToOne)) {
+    for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.oneToOne)) {
       // TODO: Handle removing models where model was present in loaded model, but not present now.
       await save(map[column.name], txn: txn);
     }
 
     // -- Save one-to-many referenced models.
-    for (Column column in model.modelInfo.getColumnsWithReference(this, ReferenceType.oneToMany)) {
+    for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.oneToMany)) {
       for (Model otherModel in map[column.name]) {
         // TODO: Handle removing models where model was present in loaded model, but not present now.
         await save(otherModel, txn: txn);
@@ -113,7 +111,7 @@ class Urthate {
     }
 
     // -- Save many-to-many referenced models.
-    for (Column column in model.modelInfo.getColumnsWithReference(this, ReferenceType.manyToMany)) {
+    for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.manyToMany)) {
       for (Model otherModel in map[column.name]) {
         // TODO: Handle removing models where model was present in loaded model, but not present now.
         await save(otherModel, txn: txn);
