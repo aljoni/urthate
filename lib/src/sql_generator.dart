@@ -6,13 +6,13 @@ import 'package:urthate/src/urthate.dart';
 class SQLGenerator {
   Set<String> generatedManyToManyTableNames = Set();
 
-  String _buildColumn(Column column) {
+  String _buildColumn(Urthate ut, Column column) {
     String line = '  `${column.name}` ';
 
-    if (Urthate().mappers.containsKey(column.type)) {
-      line += Urthate().mappers[column.type].columnType.toUpperCase();
-      if (Urthate().mappers[column.type].columnSize != null) {
-        line += '(${Urthate().mappers[column.type].columnSize})';
+    if (ut.mappers.containsKey(column.type)) {
+      line += ut.mappers[column.type].columnType.toUpperCase();
+      if (ut.mappers[column.type].columnSize != null) {
+        line += '(${ut.mappers[column.type].columnSize})';
       } else if (column.size != null) {
         line += '(${column.size})';
       }
@@ -33,11 +33,12 @@ class SQLGenerator {
     return line;
   }
 
-  List<String> _buildOneToOne(Column column) {
+  List<String> _buildOneToOne(Urthate ut, Column column) {
     List<String> lines = [];
-    List<Column> otherPrimaries = Urthate().models[column.references.modelName].primaryColumns;
+    List<Column> otherPrimaries = ut.models[column.references.modelName].primaryColumns;
     for (Column otherColumn in otherPrimaries) {
       lines.add(_buildColumn(
+        ut,
         Column(
           name: '${column.name}__${otherColumn.name}',
           type: otherColumn.type,
@@ -48,10 +49,11 @@ class SQLGenerator {
     return lines;
   }
 
-  List<String> _buildOneToMany(ModelInfo modelInfo) {
+  List<String> _buildOneToMany(Urthate ut, ModelInfo modelInfo) {
     List<String> lines = [];
     for (Column otherColumn in modelInfo.primaryColumns) {
       lines.add(_buildColumn(
+        ut,
         Column(
           name: '${modelInfo.name}__${otherColumn.name}',
           type: otherColumn.type,
@@ -62,7 +64,7 @@ class SQLGenerator {
     return lines;
   }
 
-  String generateCreateTable(ModelInfo modelInfo) {
+  String generateCreateTable(Urthate ut, ModelInfo modelInfo) {
     List<String> lines = [];
     List<String> primaries = [];
     List<Column> oneToOneReferences = [];
@@ -87,15 +89,15 @@ class SQLGenerator {
         primaries.add(column.name);
       }
 
-      lines.add(_buildColumn(column));
+      lines.add(_buildColumn(ut, column));
     }
 
     // Add columns for one-to-one.
-    lines.addAll(oneToOneReferences.expand(_buildOneToOne));
+    lines.addAll(oneToOneReferences.expand((column) => _buildOneToOne(ut, column)));
 
     // Add columns for one-to-many references.
-    List<ModelInfo> referencesModel = Urthate().findModelsThatReferenceModel(modelInfo.name, ReferenceType.oneToMany);
-    lines.addAll(referencesModel.expand(_buildOneToMany));
+    List<ModelInfo> referencesModel = ut.findModelsThatReferenceModel(modelInfo.name, ReferenceType.oneToMany);
+    lines.addAll(referencesModel.expand((column) => _buildOneToMany(ut, column)));
 
     // Generate SQL string.
     String sql = 'CREATE TABLE `${modelInfo.name}` (\n';
@@ -106,7 +108,7 @@ class SQLGenerator {
     }
 
     for (Column column in oneToOneReferences) {
-      ModelInfo otherModelInfo = Urthate().models[column.references.modelName];
+      ModelInfo otherModelInfo = ut.models[column.references.modelName];
       for (Column otherColumn in otherModelInfo.primaryColumns) {
         sql +=
             '  FOREIGN KEY(`${column.name}__${otherColumn.name}`) REFERENCES `${otherModelInfo.name}`(`${otherColumn.name}`),\n';
@@ -124,9 +126,9 @@ class SQLGenerator {
     return sql + '\n)';
   }
 
-  String _generateManyToManyForColumn(ModelInfo modelInfo, Column column) {
+  String _generateManyToManyForColumn(Urthate ut, ModelInfo modelInfo, Column column) {
     // Get referenced model.
-    ModelInfo otherModelInfo = Urthate().models[column.references.modelName];
+    ModelInfo otherModelInfo = ut.models[column.references.modelName];
 
     // Ensure other model exists.
     if (otherModelInfo == null) {
@@ -153,19 +155,23 @@ class SQLGenerator {
     List<String> lines = []
       ..addAll(modelInfo.primaryColumns.map((column) {
         columnNames.add('${modelInfo.name}__${column.name}');
-        return _buildColumn(Column(
-          name: '${modelInfo.name}__${column.name}',
-          type: column.type,
-          size: column.size,
-        ));
+        return _buildColumn(
+            ut,
+            Column(
+              name: '${modelInfo.name}__${column.name}',
+              type: column.type,
+              size: column.size,
+            ));
       }))
       ..addAll(otherModelInfo.primaryColumns.map((column) {
         columnNames.add('${otherModelInfo.name}__${column.name}');
-        return _buildColumn(Column(
-          name: '${otherModelInfo.name}__${column.name}',
-          type: column.type,
-          size: column.size,
-        ));
+        return _buildColumn(
+            ut,
+            Column(
+              name: '${otherModelInfo.name}__${column.name}',
+              type: column.type,
+              size: column.size,
+            ));
       }));
 
     // Generate SQL string.
@@ -180,14 +186,14 @@ class SQLGenerator {
     return sql + '\n)';
   }
 
-  List<String> _generateManyToManyTablesForModel(ModelInfo modelInfo) => modelInfo
+  List<String> _generateManyToManyTablesForModel(Urthate ut, ModelInfo modelInfo) => modelInfo
       .getColumnsWithReference(ReferenceType.manyToMany)
-      .map((column) => _generateManyToManyForColumn(modelInfo, column))
+      .map((column) => _generateManyToManyForColumn(ut, modelInfo, column))
       .toList();
 
-  List<String> generateManyToManyTables() => Urthate()
+  List<String> generateManyToManyTables(Urthate ut) => ut
       .findModelsWithReferenceType(ReferenceType.manyToMany)
-      .expand((model) => _generateManyToManyTablesForModel(model))
+      .expand((model) => _generateManyToManyTablesForModel(ut, model))
       .where((sql) => sql != null)
       .toList();
 }

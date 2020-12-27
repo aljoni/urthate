@@ -37,16 +37,18 @@ void main() {
       mapper: null,
     );
 
-    urt.Urthate().register(foo);
-    urt.Urthate().register(bar);
-    urt.Urthate().register(baz);
+    urt.Urthate ut = urt.Urthate();
+
+    ut.register(foo);
+    ut.register(bar);
+    ut.register(baz);
 
     SQLGenerator sqlGenerator = SQLGenerator();
 
-    print(sqlGenerator.generateCreateTable(foo));
-    print(sqlGenerator.generateCreateTable(bar));
-    print(sqlGenerator.generateCreateTable(baz));
-    List<String> sqls = sqlGenerator.generateManyToManyTables();
+    print(sqlGenerator.generateCreateTable(ut, foo));
+    print(sqlGenerator.generateCreateTable(ut, bar));
+    print(sqlGenerator.generateCreateTable(ut, baz));
+    List<String> sqls = sqlGenerator.generateManyToManyTables(ut);
     for (String sql in sqls) {
       print(sql);
     }

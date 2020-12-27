@@ -7,9 +7,6 @@ import 'package:urthate/src/model/reference.dart';
 import 'model/model_info.dart';
 
 class Urthate {
-  /// Singleton instance.
-  static final Urthate _instance = Urthate._();
-
   /// Registered models.
   Map<String, ModelInfo> models = <String, ModelInfo>{};
 
@@ -18,12 +15,6 @@ class Urthate {
     'datetime': const DateTimeMapper(),
     'bool': const BoolMapper(),
   };
-
-  /// Private constructor to prevent initialisation.
-  Urthate._();
-
-  /// Factory constructor returning singleton instance.
-  factory Urthate() => _instance;
 
   /// Register a new model.
   void register(ModelInfo info) => models[info.name] = info;
