@@ -1,4 +1,8 @@
+import 'package:urthate/src/model/model_info.dart';
+
 /// Base type for all database models.
 abstract class Model {
-  Map<String, dynamic> toMap();
+  ModelInfo get modelInfo;
+
+  Map<String, dynamic> get dbMap;
 }

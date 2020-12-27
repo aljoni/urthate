@@ -4,6 +4,7 @@ import 'package:urthate/src/model/column.dart';
 import 'package:urthate/src/model/reference.dart';
 
 import '../urthate.dart';
+import '../urthate.dart';
 
 /// Mapper function to create a [Model] from a [Map].
 typedef T ModelFromMap<T extends Model>(Map<String, dynamic> map);
@@ -27,7 +28,7 @@ class ModelInfo {
   });
 
   /// Returns a list of all columns marked as primary.
-  List<Column> primaryColumns(Urthate ut) => columns[ut.version].where((column) => column.primary).toList();
+  List<Column> primaryColumns(int version) => columns[version].where((column) => column.primary).toList();
 
   /// Returns a list of all columns with a reference of type [referenceType].
   List<Column> getColumnsWithReference(Urthate ut, ReferenceType referenceType) => columns[ut.version]

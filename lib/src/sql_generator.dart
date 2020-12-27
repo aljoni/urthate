@@ -3,6 +3,9 @@ import 'package:urthate/src/model/model_info.dart';
 import 'package:urthate/src/model/reference.dart';
 import 'package:urthate/src/urthate.dart';
 
+import 'model/model_info.dart';
+import 'urthate.dart';
+
 class SQLGenerator {
   Set<String> generatedManyToManyTableNames = Set();
 
@@ -35,7 +38,7 @@ class SQLGenerator {
 
   List<String> _buildOneToOne(Urthate ut, Column column) {
     List<String> lines = [];
-    List<Column> otherPrimaries = ut.models[column.references.modelName].primaryColumns(ut);
+    List<Column> otherPrimaries = ut.models[column.references.modelName].primaryColumns(ut.version);
     for (Column otherColumn in otherPrimaries) {
       lines.add(_buildColumn(
         ut,
@@ -51,7 +54,7 @@ class SQLGenerator {
 
   List<String> _buildOneToMany(Urthate ut, ModelInfo modelInfo) {
     List<String> lines = [];
-    for (Column otherColumn in modelInfo.primaryColumns(ut)) {
+    for (Column otherColumn in modelInfo.primaryColumns(ut.version)) {
       lines.add(_buildColumn(
         ut,
         Column(
@@ -109,14 +112,14 @@ class SQLGenerator {
 
     for (Column column in oneToOneReferences) {
       ModelInfo otherModelInfo = ut.models[column.references.modelName];
-      for (Column otherColumn in otherModelInfo.primaryColumns(ut)) {
+      for (Column otherColumn in otherModelInfo.primaryColumns(ut.version)) {
         sql +=
             '  FOREIGN KEY(`${column.name}__${otherColumn.name}`) REFERENCES `${otherModelInfo.name}`(`${otherColumn.name}`),\n';
       }
     }
 
     for (ModelInfo otherModelInfo in referencesModel) {
-      for (Column column in modelInfo.primaryColumns(ut)) {
+      for (Column column in modelInfo.primaryColumns(ut.version)) {
         sql +=
             '  FOREIGN KEY(`${otherModelInfo.name}__${column.name}`) REFERENCES `${otherModelInfo.name}`(`${column.name}`),\n';
       }
@@ -153,7 +156,7 @@ class SQLGenerator {
     // Generate columns linking both tables.
     List<String> columnNames = [];
     List<String> lines = []
-      ..addAll(modelInfo.primaryColumns(ut).map((column) {
+      ..addAll(modelInfo.primaryColumns(ut.version).map((column) {
         columnNames.add('${modelInfo.name}__${column.name}');
         return _buildColumn(
             ut,
@@ -163,7 +166,7 @@ class SQLGenerator {
               size: column.size,
             ));
       }))
-      ..addAll(otherModelInfo.primaryColumns(ut).map((column) {
+      ..addAll(otherModelInfo.primaryColumns(ut.version).map((column) {
         columnNames.add('${otherModelInfo.name}__${column.name}');
         return _buildColumn(
             ut,
@@ -178,9 +181,9 @@ class SQLGenerator {
     String sql = 'CREATE TABLE `$tableName` (\n';
     sql += lines.join(',\n');
     sql += ',\n  PRIMARY KEY(' + columnNames.map((name) => '`$name`').join(',') + '),\n';
-    modelInfo.primaryColumns(ut).forEach((column) => sql +=
+    modelInfo.primaryColumns(ut.version).forEach((column) => sql +=
         '  FOREIGN KEY(`${modelInfo.name}__${column.name}`) REFERENCES `${modelInfo.name}`(`${column.name}`),\n');
-    otherModelInfo.primaryColumns(ut).forEach((column) => sql +=
+    otherModelInfo.primaryColumns(ut.version).forEach((column) => sql +=
         '  FOREIGN KEY(`${otherModelInfo.name}__${column.name}`) REFERENCES `${otherModelInfo.name}`(`${column.name}`),\n');
     sql = sql.substring(0, sql.length - 2);
     return sql + '\n)';
@@ -196,4 +199,8 @@ class SQLGenerator {
       .expand((model) => _generateManyToManyTablesForModel(ut, model))
       .where((sql) => sql != null)
       .toList();
+
+  /// Generate where clause based on primary columns.
+  static String generateWherePrimary(Urthate ut, ModelInfo modelInfo) =>
+      modelInfo.primaryColumns(ut.version).map((column) => '`${column.name}` = ?').join(' AND ');
 }
