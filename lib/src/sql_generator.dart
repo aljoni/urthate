@@ -35,7 +35,7 @@ class SQLGenerator {
 
   List<String> _buildOneToOne(Urthate ut, Column column) {
     List<String> lines = [];
-    List<Column> otherPrimaries = ut.models[column.references.modelName].primaryColumns;
+    List<Column> otherPrimaries = ut.models[column.references.modelName].primaryColumns(ut);
     for (Column otherColumn in otherPrimaries) {
       lines.add(_buildColumn(
         ut,
@@ -51,7 +51,7 @@ class SQLGenerator {
 
   List<String> _buildOneToMany(Urthate ut, ModelInfo modelInfo) {
     List<String> lines = [];
-    for (Column otherColumn in modelInfo.primaryColumns) {
+    for (Column otherColumn in modelInfo.primaryColumns(ut)) {
       lines.add(_buildColumn(
         ut,
         Column(
@@ -71,7 +71,7 @@ class SQLGenerator {
     List<Column> oneToManyReferences = [];
 
     // Add columns directly defined on model.
-    for (Column column in modelInfo.columns) {
+    for (Column column in modelInfo.columns[ut.version]) {
       if (column.references != null) {
         switch (column.references.type) {
           case ReferenceType.oneToOne:
@@ -109,14 +109,14 @@ class SQLGenerator {
 
     for (Column column in oneToOneReferences) {
       ModelInfo otherModelInfo = ut.models[column.references.modelName];
-      for (Column otherColumn in otherModelInfo.primaryColumns) {
+      for (Column otherColumn in otherModelInfo.primaryColumns(ut)) {
         sql +=
             '  FOREIGN KEY(`${column.name}__${otherColumn.name}`) REFERENCES `${otherModelInfo.name}`(`${otherColumn.name}`),\n';
       }
     }
 
     for (ModelInfo otherModelInfo in referencesModel) {
-      for (Column column in modelInfo.primaryColumns) {
+      for (Column column in modelInfo.primaryColumns(ut)) {
         sql +=
             '  FOREIGN KEY(`${otherModelInfo.name}__${column.name}`) REFERENCES `${otherModelInfo.name}`(`${column.name}`),\n';
       }
@@ -145,7 +145,7 @@ class SQLGenerator {
     generatedManyToManyTableNames.add(tableName);
 
     // Ensure other model references the model were generating for.
-    if (!otherModelInfo.referencesModel(modelInfo.name, ReferenceType.manyToMany)) {
+    if (!otherModelInfo.referencesModel(ut, modelInfo.name, ReferenceType.manyToMany)) {
       throw StateError(
           'Model "${column.references.modelName}", referenced by "${modelInfo.name}", does not have a manyToMany reference to "${modelInfo.name}"');
     }
@@ -153,7 +153,7 @@ class SQLGenerator {
     // Generate columns linking both tables.
     List<String> columnNames = [];
     List<String> lines = []
-      ..addAll(modelInfo.primaryColumns.map((column) {
+      ..addAll(modelInfo.primaryColumns(ut).map((column) {
         columnNames.add('${modelInfo.name}__${column.name}');
         return _buildColumn(
             ut,
@@ -163,7 +163,7 @@ class SQLGenerator {
               size: column.size,
             ));
       }))
-      ..addAll(otherModelInfo.primaryColumns.map((column) {
+      ..addAll(otherModelInfo.primaryColumns(ut).map((column) {
         columnNames.add('${otherModelInfo.name}__${column.name}');
         return _buildColumn(
             ut,
@@ -178,16 +178,16 @@ class SQLGenerator {
     String sql = 'CREATE TABLE `$tableName` (\n';
     sql += lines.join(',\n');
     sql += ',\n  PRIMARY KEY(' + columnNames.map((name) => '`$name`').join(',') + '),\n';
-    modelInfo.primaryColumns.forEach((column) => sql +=
+    modelInfo.primaryColumns(ut).forEach((column) => sql +=
         '  FOREIGN KEY(`${modelInfo.name}__${column.name}`) REFERENCES `${modelInfo.name}`(`${column.name}`),\n');
-    otherModelInfo.primaryColumns.forEach((column) => sql +=
+    otherModelInfo.primaryColumns(ut).forEach((column) => sql +=
         '  FOREIGN KEY(`${otherModelInfo.name}__${column.name}`) REFERENCES `${otherModelInfo.name}`(`${column.name}`),\n');
     sql = sql.substring(0, sql.length - 2);
     return sql + '\n)';
   }
 
   List<String> _generateManyToManyTablesForModel(Urthate ut, ModelInfo modelInfo) => modelInfo
-      .getColumnsWithReference(ReferenceType.manyToMany)
+      .getColumnsWithReference(ut, ReferenceType.manyToMany)
       .map((column) => _generateManyToManyForColumn(ut, modelInfo, column))
       .toList();
 

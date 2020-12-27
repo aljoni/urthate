@@ -6,38 +6,44 @@ void main() {
   test('generate sql', () {
     urt.ModelInfo foo = urt.ModelInfo(
       name: 'foo',
-      columns: <urt.Column>[
-        urt.Column(name: 'id', type: 'text', primary: true),
-        urt.Column(name: 'created', type: 'datetime', notNull: true),
-        urt.Column(name: 'active', type: 'bool'),
-        urt.Column(name: 'bars', references: urt.Reference('bar', urt.ReferenceType.manyToMany)),
-        urt.Column(name: 'bazs', references: urt.Reference('baz', urt.ReferenceType.oneToMany)),
-      ],
+      columns: {
+        1: <urt.Column>[
+          urt.Column(name: 'id', type: 'text', primary: true),
+          urt.Column(name: 'created', type: 'datetime', notNull: true),
+          urt.Column(name: 'active', type: 'bool'),
+          urt.Column(name: 'bars', references: urt.Reference('bar', urt.ReferenceType.manyToMany)),
+          urt.Column(name: 'bazs', references: urt.Reference('baz', urt.ReferenceType.oneToMany)),
+        ],
+      },
       mapper: null,
     );
 
     urt.ModelInfo bar = urt.ModelInfo(
       name: 'bar',
-      columns: <urt.Column>[
-        urt.Column(name: 'id', type: 'text', primary: true),
-        urt.Column(name: 'name', type: 'text', primary: true),
-        urt.Column(name: 'email', type: 'text'),
-        urt.Column(name: 'foos', references: urt.Reference('foo', urt.ReferenceType.manyToMany)),
-        urt.Column(name: 'baz', references: urt.Reference('baz', urt.ReferenceType.oneToOne)),
-      ],
+      columns: {
+        1: <urt.Column>[
+          urt.Column(name: 'id', type: 'text', primary: true),
+          urt.Column(name: 'name', type: 'text', primary: true),
+          urt.Column(name: 'email', type: 'text'),
+          urt.Column(name: 'foos', references: urt.Reference('foo', urt.ReferenceType.manyToMany)),
+          urt.Column(name: 'baz', references: urt.Reference('baz', urt.ReferenceType.oneToOne)),
+        ],
+      },
       mapper: null,
     );
 
     urt.ModelInfo baz = urt.ModelInfo(
       name: 'baz',
-      columns: <urt.Column>[
-        urt.Column(name: 'id', type: 'text', primary: true),
-        urt.Column(name: 'thing', type: 'text'),
-      ],
+      columns: {
+        1: <urt.Column>[
+          urt.Column(name: 'id', type: 'text', primary: true),
+          urt.Column(name: 'thing', type: 'text'),
+        ],
+      },
       mapper: null,
     );
 
-    urt.Urthate ut = urt.Urthate();
+    urt.Urthate ut = urt.Urthate(version: 1);
 
     ut.register(foo);
     ut.register(bar);
