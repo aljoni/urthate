@@ -15,7 +15,7 @@ void main() {
           urt.Column(name: 'bazs', references: urt.Reference('baz', urt.ReferenceType.oneToMany)),
         ],
       },
-      mapper: null,
+      fromDbMap: null,
     );
 
     urt.ModelInfo bar = urt.ModelInfo(
@@ -29,7 +29,7 @@ void main() {
           urt.Column(name: 'baz', references: urt.Reference('baz', urt.ReferenceType.oneToOne)),
         ],
       },
-      mapper: null,
+      fromDbMap: null,
     );
 
     urt.ModelInfo baz = urt.ModelInfo(
@@ -40,7 +40,7 @@ void main() {
           urt.Column(name: 'thing', type: 'text'),
         ],
       },
-      mapper: null,
+      fromDbMap: null,
     );
 
     urt.Urthate ut = urt.Urthate(version: 1);

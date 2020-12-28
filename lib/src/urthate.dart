@@ -152,7 +152,33 @@ class Urthate {
         // TODO: Handle removing models where model was present in loaded model, but not present now.
         await save(otherModel, txn: txn);
 
-        // TODO: Insert into linking table
+        Map<String, dynamic> linkValues = {};
+        List<String> columnNames = [];
+        List<dynamic> whereArgs = [];
+        for (Column column in modelInfo.primaryColumns(version)) {
+          linkValues['${modelInfo.name}__${column.name}'] = map[column.name];
+          columnNames.add('${modelInfo.name}__${column.name}');
+          whereArgs.add(map[column.name]);
+        }
+
+        ModelInfo otherModelInfo = models[otherModel.modelName];
+        Map<String, dynamic> otherMap = otherModel.dbMap;
+        for (Column column in otherModelInfo.primaryColumns(version)) {
+          linkValues['${otherModelInfo.name}__${column.name}'] = otherMap[column.name];
+          columnNames.add('${otherModelInfo.name}__${column.name}');
+          whereArgs.add(otherMap[column.name]);
+        }
+
+        String tableName = ([modelInfo.name, otherModelInfo.name]..sort((a, b) => a.compareTo(b))).join('__');
+
+        List<Map<String, dynamic>> rows = await txn.query(
+          tableName,
+          where: columnNames.map((name) => '`$name` = ?').join(' AND '),
+          whereArgs: whereArgs,
+        );
+        if (rows.isEmpty) {
+          await txn.insert(tableName, linkValues);
+        }
       }
     }
   }
@@ -161,7 +187,39 @@ class Urthate {
   Future<bool> delete(Model model) => Future.value(false);
 
   /// Load a single model from the database.
-  Future<T> load<T extends Model>() => Future.value(null);
+  Future<T> load<T extends Model>(String model, {String where, List<dynamic> whereArgs, sql.Transaction txn}) async {
+    if (txn == null) {
+      return await _db.transaction((txn) async => load(
+            model,
+            where: where,
+            whereArgs: whereArgs,
+            txn: txn,
+          ));
+    }
+
+    ModelInfo modelInfo = models[model];
+
+    List<Map<String, dynamic>> rows = await txn.query(
+      modelInfo.name,
+      where: where,
+      whereArgs: whereArgs,
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    Map<String, dynamic> map = Map.from(rows.first);
+    for (Column column in modelInfo.columns[version]) {
+      if (mappers.containsKey(column.type)) {
+        map[column.name] = mappers[column.type].mapFrom(map[column.name]);
+      }
+
+      // TODO: Load referenced models
+    }
+
+    return modelInfo.fromDbMap(map);
+  }
 
   /// Load all models from the database.
   Future<List<T>> loadAll<T extends Model>() => Future.value([]);

@@ -19,12 +19,12 @@ class ModelInfo {
   final Map<int, List<Column>> columns;
 
   /// Mapper function.
-  final ModelFromMap mapper;
+  final ModelFromMap fromDbMap;
 
   const ModelInfo({
     @required this.name,
     @required this.columns,
-    @required this.mapper,
+    @required this.fromDbMap,
   });
 
   /// Returns a list of all columns marked as primary.
