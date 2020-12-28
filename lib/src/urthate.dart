@@ -230,7 +230,7 @@ class Urthate {
       }
     }
 
-    txn.delete(
+    await txn.delete(
       modelInfo.name,
       where: where,
       whereArgs: whereArgs,
