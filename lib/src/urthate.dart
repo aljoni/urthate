@@ -65,7 +65,14 @@ class Urthate {
   }
 
   /// Save [model] to database.  New models will be inserted, existing models will be updated.
-  Future save(Model model, {sql.Transaction txn, Reference ref, Model parent, ModelInfo parentInfo}) async {
+  Future save(
+    Model model, {
+    sql.Transaction txn,
+    Reference ref,
+    Model parent,
+    ModelInfo parentInfo,
+    bool deleteCascade = false,
+  }) async {
     // TODO: Handle [_db] being null.
 
     if (txn == null) {
@@ -224,6 +231,7 @@ class Urthate {
               );
               break;
             default:
+              // TODO: Implement cascade delete for 'manyToMany'
               throw UnimplementedError('Not implemented');
           }
         }
