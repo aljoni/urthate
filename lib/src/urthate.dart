@@ -214,18 +214,12 @@ class Urthate {
           switch (column.references.type) {
             case ReferenceType.oneToOne:
             case ReferenceType.oneToMany:
-              List<dynamic> whereArgs = [];
-              for (Column column in modelInfo.primaryColumns(version)) {
-                whereArgs.add(dbMap[column.name]);
-              }
+              List<Column> primaryColumns = modelInfo.primaryColumns(version);
 
               await delete(
                 column.references.modelName,
-                where: modelInfo
-                    .primaryColumns(version)
-                    .map((column) => '`${modelInfo.name}__${column.name}` = ?')
-                    .join(' AND '),
-                whereArgs: whereArgs,
+                where: primaryColumns.map((column) => '`${modelInfo.name}__${column.name}` = ?').join(' AND '),
+                whereArgs: primaryColumns.map((column) => dbMap[column.name]).toList(),
                 txn: txn,
               );
               break;
