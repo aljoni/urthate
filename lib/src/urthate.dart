@@ -69,7 +69,7 @@ class Urthate {
     // TODO: Handle [_db] being null.
 
     if (txn == null) {
-      return await _db.transaction((txn) async => save(
+      return await _db.transaction((txn) async => await save(
             model,
             txn: txn,
             ref: ref,
@@ -184,12 +184,69 @@ class Urthate {
   }
 
   /// Delete [model] from database.
-  Future<bool> delete(Model model) => Future.value(false);
+  Future delete(
+    String model, {
+    String where,
+    List<dynamic> whereArgs,
+    bool cascade = false,
+    sql.Transaction txn,
+  }) async {
+    if (txn == null) {
+      await _db.transaction((txn) async => await delete(
+            model,
+            cascade: cascade,
+            txn: txn,
+          ));
+    }
+
+    ModelInfo modelInfo = models[model];
+
+    if (cascade) {
+      Map<String, dynamic> dbMap = (await load(
+        model,
+        where: where,
+        whereArgs: whereArgs,
+      ))
+          .dbMap;
+
+      for (Column column in modelInfo.columns[version]) {
+        if (column.references != null) {
+          switch (column.references.type) {
+            case ReferenceType.oneToOne:
+            case ReferenceType.oneToMany:
+              List<dynamic> whereArgs = [];
+              for (Column column in modelInfo.primaryColumns(version)) {
+                whereArgs.add(dbMap[column.name]);
+              }
+
+              await delete(
+                column.references.modelName,
+                where: modelInfo
+                    .primaryColumns(version)
+                    .map((column) => '`${modelInfo.name}__${column.name}` = ?')
+                    .join(' AND '),
+                whereArgs: whereArgs,
+                txn: txn,
+              );
+              break;
+            default:
+              throw UnimplementedError('Not implemented');
+          }
+        }
+      }
+    }
+
+    txn.delete(
+      modelInfo.name,
+      where: where,
+      whereArgs: whereArgs,
+    );
+  }
 
   /// Load a single model from the database.
   Future<T> load<T extends Model>(String model, {String where, List<dynamic> whereArgs, sql.Transaction txn}) async {
     if (txn == null) {
-      return await _db.transaction((txn) async => load(
+      return await _db.transaction((txn) async => await load(
             model,
             where: where,
             whereArgs: whereArgs,
