@@ -71,6 +71,7 @@ class Urthate {
     Reference ref,
     Model parent,
     ModelInfo parentInfo,
+    bool deleteRemoved = true,
     bool deleteCascade = false,
   }) async {
     // TODO: Handle [_db] being null.
@@ -129,7 +130,40 @@ class Urthate {
 
     // -- Save one-to-one referenced models.
     for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.oneToOne)) {
-      // TODO: Handle removing models where model was present in loaded model, but not present now.
+      if (deleteRemoved && rows.isNotEmpty) {
+        ModelInfo otherModelInfo = models[column.references.modelName];
+
+        // Compute where clause.
+        List<Column> primaryColumns = modelInfo.primaryColumns(version);
+        String where = primaryColumns.map((column) => '`${modelInfo.name}__${column.name}` = ?').join(' AND ');
+
+        // Query primary columns for existing references.
+        List<Map<String, dynamic>> otherRows = await _db.query(
+          otherModelInfo.name,
+          columns: otherModelInfo.primaryColumns(version).map((column) => column.name).toList(),
+          where: where,
+          whereArgs: primaryColumns.map((column) => map[column.name]).toList(),
+        );
+
+        // Compute list of removed rows.
+        List<List<String>> removedPrimaryValues = [];
+        for (Map<String, dynamic> row in otherRows) {
+          if (!map[column.name].any((Model model) => model.matches(row))) {
+            removedPrimaryValues.add(row.values);
+          }
+        }
+
+        // Delete removed rows.
+        for (List<String> whereArgs in removedPrimaryValues) {
+          await delete(
+            otherModelInfo.name,
+            where: where,
+            whereArgs: whereArgs,
+            cascade: deleteCascade,
+          );
+        }
+      }
+
       await save(
         map[column.name],
         txn: txn,
@@ -190,9 +224,9 @@ class Urthate {
     }
   }
 
-  /// Delete [model] from database.
+  /// Delete [modelName] from database.
   Future delete(
-    String model, {
+    String modelName, {
     String where,
     List<dynamic> whereArgs,
     bool cascade = false,
@@ -200,17 +234,17 @@ class Urthate {
   }) async {
     if (txn == null) {
       await _db.transaction((txn) async => await delete(
-            model,
+            modelName,
             cascade: cascade,
             txn: txn,
           ));
     }
 
-    ModelInfo modelInfo = models[model];
+    ModelInfo modelInfo = models[modelName];
 
     if (cascade) {
       Map<String, dynamic> dbMap = (await load(
-        model,
+        modelName,
         where: where,
         whereArgs: whereArgs,
       ))
