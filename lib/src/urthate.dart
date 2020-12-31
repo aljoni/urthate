@@ -131,37 +131,13 @@ class Urthate {
     // -- Save one-to-one referenced models.
     for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.oneToOne)) {
       if (deleteRemoved && rows.isNotEmpty) {
-        ModelInfo otherModelInfo = models[column.references.modelName];
-
-        // Compute where clause.
-        List<Column> primaryColumns = modelInfo.primaryColumns(version);
-        String where = primaryColumns.map((column) => '`${modelInfo.name}__${column.name}` = ?').join(' AND ');
-
-        // Query primary columns for existing references.
-        List<Map<String, dynamic>> otherRows = await _db.query(
-          otherModelInfo.name,
-          columns: otherModelInfo.primaryColumns(version).map((column) => column.name).toList(),
-          where: where,
-          whereArgs: primaryColumns.map((column) => map[column.name]).toList(),
+        await _deleteRemovedOneToX(
+          column: column,
+          parentModelInfo: modelInfo,
+          parentMap: map,
+          deleteCascade: deleteCascade,
+          txn: txn,
         );
-
-        // Compute list of removed rows.
-        List<List<String>> removedPrimaryValues = [];
-        for (Map<String, dynamic> row in otherRows) {
-          if (!map[column.name].any((Model model) => model.matches(row))) {
-            removedPrimaryValues.add(row.values);
-          }
-        }
-
-        // Delete removed rows.
-        for (List<String> whereArgs in removedPrimaryValues) {
-          await delete(
-            otherModelInfo.name,
-            where: where,
-            whereArgs: whereArgs,
-            cascade: deleteCascade,
-          );
-        }
       }
 
       await save(
@@ -176,7 +152,16 @@ class Urthate {
     // -- Save one-to-many referenced models.
     for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.oneToMany)) {
       for (Model otherModel in map[column.name]) {
-        // TODO: Handle removing models where model was present in loaded model, but not present now.
+        if (deleteRemoved && rows.isNotEmpty) {
+          await _deleteRemovedOneToX(
+            column: column,
+            parentModelInfo: modelInfo,
+            parentMap: map,
+            deleteCascade: deleteCascade,
+            txn: txn,
+          );
+        }
+
         await save(
           otherModel,
           txn: txn,
@@ -221,6 +206,45 @@ class Urthate {
           await txn.insert(tableName, linkValues);
         }
       }
+    }
+  }
+
+  Future _deleteRemovedOneToX({
+    @required Column column,
+    @required ModelInfo parentModelInfo,
+    @required Map<String, dynamic> parentMap,
+    @required bool deleteCascade,
+    @required sql.Transaction txn,
+  }) async {
+    ModelInfo childModelInfo = models[column.references.modelName];
+
+    List<Column> primaryColumns = parentModelInfo.primaryColumns(version);
+    String where = primaryColumns.map((column) => '`${parentModelInfo.name}__${column.name}` = ?').join(' AND ');
+
+    // Query primary columns for existing references.
+    List<Map<String, dynamic>> otherRows = await _db.query(
+      childModelInfo.name,
+      columns: childModelInfo.primaryColumns(version).map((column) => column.name).toList(),
+      where: where,
+      whereArgs: primaryColumns.map((column) => parentMap[column.name]).toList(),
+    );
+
+    // Compute list of removed rows.
+    List<List<String>> removedPrimaryValues = [];
+    for (Map<String, dynamic> row in otherRows) {
+      if (!parentMap[column.name].any((Model model) => model.matches(row))) {
+        removedPrimaryValues.add(row.values);
+      }
+    }
+
+    // Delete removed rows.
+    for (List<String> whereArgs in removedPrimaryValues) {
+      await delete(
+        childModelInfo.name,
+        where: where,
+        whereArgs: whereArgs,
+        cascade: deleteCascade,
+      );
     }
   }
 
