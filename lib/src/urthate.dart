@@ -174,10 +174,66 @@ class Urthate {
 
     // -- Save many-to-many referenced models.
     for (Column column in modelInfo.getColumnsWithReference(this, ReferenceType.manyToMany)) {
+      String tableName = ([modelInfo.name, column.references.modelName]..sort((a, b) => a.compareTo(b))).join('__');
+
+      // Handle removing referenced models which are no longer referenced.
+      if (rows.isNotEmpty) {
+        // Load linking table, for this model type.
+        List<Column> primaryColumns = modelInfo.primaryColumns(version);
+        List<Map<String, dynamic>> linkRows = await txn.query(
+          tableName,
+          where: primaryColumns.map((column) => '`${modelInfo.name}__${column.name}` = ?').join(' AND '),
+          whereArgs: primaryColumns.map((column) => map[column.name]).toList(),
+        );
+
+        // Identify removed models.
+        List<List<String>> removedOtherPrimaryValues = [];
+        for (Map<String, dynamic> linkRow in linkRows) {
+          for (Model referencedModel in map[column.name]) {
+            ModelInfo referencedInfo = models[referencedModel.modelName];
+            Map<String, dynamic> referencedMap = referencedModel.dbMap;
+
+            bool foundMatch = true;
+            for (Column referencedPrimary in referencedInfo.primaryColumns(version)) {
+              String columnName = '${referencedInfo.name}__${referencedPrimary.name}';
+              if (!linkRow[columnName] == referencedMap[referencedPrimary.name]) {
+                foundMatch = false;
+                break;
+              }
+            }
+
+            if (!foundMatch) {
+              List<String> values = [];
+              for (Column referencedPrimary in referencedInfo.primaryColumns(version)) {
+                values.add(linkRow['${referencedInfo.name}__${referencedPrimary.name}']);
+              }
+              removedOtherPrimaryValues.add(values);
+            }
+          }
+        }
+
+        // Remove links.
+        for (List<String> removedPrimaryValues in removedOtherPrimaryValues) {
+          // TODO: Build where.
+          String where = '';
+
+          List<dynamic> whereArgs = [];
+          whereArgs.addAll(modelInfo.primaryColumns(version).map((column) => map[column.name]));
+          whereArgs.addAll(removedPrimaryValues);
+
+          await txn.delete(
+            tableName,
+            where: where,
+            whereArgs: whereArgs,
+          );
+        }
+      }
+
       for (Model otherModel in map[column.name]) {
-        // TODO: Handle removing models where model was present in loaded model, but not present now.
+        // Save model.
         await save(otherModel, txn: txn);
 
+        // Add linking table entries.
         Map<String, dynamic> linkValues = {};
         List<String> columnNames = [];
         List<dynamic> whereArgs = [];
@@ -195,14 +251,12 @@ class Urthate {
           whereArgs.add(otherMap[column.name]);
         }
 
-        String tableName = ([modelInfo.name, otherModelInfo.name]..sort((a, b) => a.compareTo(b))).join('__');
-
-        List<Map<String, dynamic>> rows = await txn.query(
+        List<Map<String, dynamic>> linkRows = await txn.query(
           tableName,
           where: columnNames.map((name) => '`$name` = ?').join(' AND '),
           whereArgs: whereArgs,
         );
-        if (rows.isEmpty) {
+        if (linkRows.isEmpty) {
           await txn.insert(tableName, linkValues);
         }
       }
