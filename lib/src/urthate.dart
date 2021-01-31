@@ -196,7 +196,7 @@ class Urthate {
             bool foundMatch = true;
             for (Column referencedPrimary in referencedInfo.primaryColumns(version)) {
               String columnName = '${referencedInfo.name}__${referencedPrimary.name}';
-              if (!linkRow[columnName] == referencedMap[referencedPrimary.name]) {
+              if (linkRow[columnName] != referencedMap[referencedPrimary.name]) {
                 foundMatch = false;
                 break;
               }
@@ -214,18 +214,30 @@ class Urthate {
 
         // Remove links.
         for (List<String> removedPrimaryValues in removedOtherPrimaryValues) {
-          // TODO: Build where.
-          String where = '';
+          // Get referenced model info.
+          ModelInfo referencedInfo = models[column.references.modelName];
+          List<Column> otherPrimaryColumns = referencedInfo.primaryColumns(version);
 
-          List<dynamic> whereArgs = [];
-          whereArgs.addAll(modelInfo.primaryColumns(version).map((column) => map[column.name]));
-          whereArgs.addAll(removedPrimaryValues);
+          // Build where for current, and referenced model.
+          List<String> modelWhere = primaryColumns.map((column) => '`${modelInfo.name}__${column.name}` = ?');
+          List<String> referencedWhere = otherPrimaryColumns.map((column) => '`${modelInfo.name}__${column.name}` = ?');
 
+          // Combine where into a single string.
+          String where = ([]..add(modelWhere)..add(referencedWhere)).join(' AND ');
+
+          // Build where arguments for current, and referenced model.
+          List<dynamic> whereArgs = []
+            ..addAll(modelInfo.primaryColumns(version).map((column) => map[column.name]))
+            ..addAll(removedPrimaryValues);
+
+          // Delete references.
           await txn.delete(
             tableName,
             where: where,
             whereArgs: whereArgs,
           );
+
+          // TODO: Handle delete removed for referenced model.
         }
       }
 

@@ -2,9 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:urthate/src/model/model.dart';
 import 'package:urthate/src/model/column.dart';
 import 'package:urthate/src/model/reference.dart';
-
-import '../urthate.dart';
-import '../urthate.dart';
+import 'package:urthate/src/urthate.dart';
 
 /// Mapper function to create a [Model] from a [Map].
 typedef T ModelFromMap<T extends Model>(Map<String, dynamic> map);
